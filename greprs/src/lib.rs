@@ -22,12 +22,26 @@ impl Config {
 
 pub fn run(config: Config) -> Result<(), Box<Error>> {
     let mut f = File::open(config.filename)?;
-    
+
     let mut contents = String::new();
     f.read_to_string(&mut contents)?;
 
-    println!("With text:\n{}", contents);
-
     Ok(())
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn one_result() {
+        let query = "dust";
+        let contents = "\nRust:\nsafe, fast, productive.\nPick three.";
+
+        assert_eq!(
+            vec!["safe, fast, productive"],
+            search(query, contents)
+        );
+    }
 }
 
