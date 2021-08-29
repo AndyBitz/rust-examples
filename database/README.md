@@ -10,9 +10,9 @@ The database can than scan the entire data through a binary search or a full sea
 $ cargo run
 Full Search:
 Found 102060 users with the age of 10 in 7077 ms
-Went through 100000 pages (unique 64242)
+Went through 100000 pages (pages with results 64242)
 
 Binary Search:
 Found 102060 users with the age of 10 in 8304 ms
-Went through 64242 pages (unique 64242)
+Went through 64242 pages
 ```
