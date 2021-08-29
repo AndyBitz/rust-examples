@@ -10,19 +10,22 @@ mod row;
 mod page_reader;
 
 fn main() {
-    // Uncomment to create the required files.
-    // create_data_pages();
-    // create_index();
+    if !std::path::Path::new("data.txt").exists() {
+        create_data_pages();
+    }
+    
+    if !std::path::Path::new("index.txt").exists() {
+        create_index();
+    }
 
-    full_search();
-    binary_search();
+    let search_age = 32;
+    full_search(search_age);
+    binary_search(search_age);
 }
 
-#[allow(dead_code)]
-fn binary_search() {
+fn binary_search(age_match: i32) {
     let now = Instant::now();
 
-    let age_match = 10;
     let mut count = 0;
 
     let mut index_file = File::open("index.txt").unwrap();
@@ -131,11 +134,9 @@ fn binary_search() {
     println!("Went through {} pages", processed_pages.len());
 }
 
-#[allow(dead_code)]
-fn full_search() {
+fn full_search(age_match: i32) {
     let now = Instant::now();
 
-    let age_match = 10;
     let mut count = 0;
 
     let data_file = File::open("data.txt").unwrap();
@@ -171,7 +172,6 @@ fn full_search() {
  * Call this function to create an example data.txt file
  * with randomly generated data that can be worked with.
  */
-#[allow(dead_code)]
 fn create_data_pages() {
     let data_file = File::create("data.txt").unwrap();
     let mut buffer = BufWriter::with_capacity(0xffff, data_file);
@@ -208,7 +208,6 @@ fn create_data_pages() {
     println!("Done in {} seconds", now.elapsed().as_secs());
 }
 
-#[allow(dead_code)]
 fn create_index() {
     let now = Instant::now();
 
