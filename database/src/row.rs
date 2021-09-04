@@ -83,7 +83,7 @@ impl RowReader<'_> {
             page,
             row_size,
             current: 0,
-            last: page.data_length as usize / row_size 
+            last: (page.data_length as usize / row_size) - 1 
         }
     }
 }

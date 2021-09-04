@@ -19,7 +19,7 @@ fn main() {
         create_index();
     }
 
-    let search_age = 32;
+    let search_age = 45;
     full_search(search_age);
     binary_search(search_age);
 }
@@ -31,11 +31,13 @@ fn binary_search(age_match: i32) {
 
     let mut index_file = File::open("index.txt").unwrap();
 
-    // 0xc is the length of each tuple
+    // 0xC is the length of each tuple
     let file_length = index_file.metadata().unwrap().len();
     let index_items = file_length / 0xC;
 
-    let mut start_index = index_items / 2;
+    let mut low = 0;
+    let mut high = index_items;
+    let mut start_index = low + ((high - low) / 2);
 
     loop {
         index_file.seek(SeekFrom::Start(start_index * 0xC)).unwrap();
@@ -45,18 +47,28 @@ fn binary_search(age_match: i32) {
 
         let age = i32::from_le_bytes(data);
 
-        if age > age_match {
-            start_index = start_index / 2;
-        } else if age < age_match {
-            start_index = start_index + (start_index / 2);
-        } else {
+        if age == age_match {
             break;
+        } else if age > age_match {
+            if high == start_index {
+                break;
+            }
+
+            high = start_index;
+            start_index = low + ((high - low) / 2);
+        } else if age < age_match {
+            if low == start_index {
+                break;
+            }
+
+            low = start_index;
+            start_index = low + ((high - low) / 2);
         }
     }
 
     let mut found_pages = Vec::<u64>::new();
 
-    // Walk down // TODO
+    // Walk down
     for index in (0..start_index).rev() {
         index_file.seek(SeekFrom::Start(index * 0xC)).unwrap();
 
@@ -72,7 +84,7 @@ fn binary_search(age_match: i32) {
         }
     }
 
-    // Walk up // TODO
+    // Walk up
     index_file.seek(SeekFrom::Start(start_index * 0xC)).unwrap();
     for _index in start_index..index_items {
         let mut all_bytes = [0x0u8; 0xC];
@@ -116,7 +128,7 @@ fn binary_search(age_match: i32) {
 
     let full_time = now.elapsed().as_millis();
 
-    println!("\nBinary Search:");
+    println!("Binary Search:");
     println!("Found {} users with the age of {} in {}ms", count, age_match, full_time);
     println!("The index step took {}ms, the data step took {}ms", index_scan_time, full_time - index_scan_time);
     println!("Went through {} pages", processed_pages.len());
@@ -147,6 +159,7 @@ fn full_search(age_match: i32) {
     println!("\nFull Search:");
     println!("Found {} users with the age of {} in {}ms", count, age_match, now.elapsed().as_millis());
     println!("Went through {} pages (pages with results {})", processed_pages.len(), pages_with_result.len());
+    println!("");
 }
 
 /**
