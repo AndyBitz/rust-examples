@@ -4,6 +4,7 @@ use std::io::BufWriter;
 use std::io::prelude::*;
 use std::io::SeekFrom;
 use std::time::Instant;
+use std::convert::TryInto;
 
 mod page;
 mod row;
@@ -13,7 +14,7 @@ fn main() {
     if !std::path::Path::new("data.txt").exists() {
         create_data_pages();
     }
-    
+
     if !std::path::Path::new("index.txt").exists() {
         create_index();
     }
@@ -59,14 +60,10 @@ fn binary_search(age_match: i32) {
     for index in (0..start_index).rev() {
         index_file.seek(SeekFrom::Start(index * 0xC)).unwrap();
 
-        let mut age_bytes = [0x0u8; 0x4];
-        let mut page_bytes = [0x0u8; 0x8];
-
-        index_file.read_exact(&mut age_bytes).unwrap();
-        index_file.read_exact(&mut page_bytes).unwrap();
-
-        let age = i32::from_le_bytes(age_bytes);
-        let page = u64::from_le_bytes(page_bytes);
+        let mut all_bytes = [0x0u8; 0xC];
+        index_file.read_exact(&mut all_bytes).unwrap();
+        let age = i32::from_le_bytes(all_bytes[0..4].try_into().unwrap());
+        let page = u64::from_le_bytes(all_bytes[4..12].try_into().unwrap());
 
         if age == age_match {
             found_pages.insert(0, page);
@@ -78,14 +75,10 @@ fn binary_search(age_match: i32) {
     // Walk up // TODO
     index_file.seek(SeekFrom::Start(start_index * 0xC)).unwrap();
     for _index in start_index..index_items {
-        let mut age_bytes = [0x0u8; 0x4];
-        let mut page_bytes = [0x0u8; 0x8];
-        
-        index_file.read_exact(&mut age_bytes).unwrap();
-        index_file.read_exact(&mut page_bytes).unwrap();
-
-        let age = i32::from_le_bytes(age_bytes);
-        let page = u64::from_le_bytes(page_bytes);
+        let mut all_bytes = [0x0u8; 0xC];
+        index_file.read_exact(&mut all_bytes).unwrap();
+        let age = i32::from_le_bytes(all_bytes[0..4].try_into().unwrap());
+        let page = u64::from_le_bytes(all_bytes[4..12].try_into().unwrap());
 
         if age == age_match {
             found_pages.push(page);
@@ -93,6 +86,7 @@ fn binary_search(age_match: i32) {
             break;
         }
     }
+    let index_scan_time = now.elapsed().as_millis();
 
     let mut page_iterator = page_reader::PageReader::new(File::open("data.txt").unwrap());
     let row_size = std::mem::size_of::<row::Row>();
@@ -104,33 +98,27 @@ fn binary_search(age_match: i32) {
     for page_offset in found_pages {
         if last_proccessed == page_offset {
             continue;
-        }
+        }        
         last_proccessed = page_offset;
         processed_pages.push(page_offset);
 
-        page_iterator.skip_to_page(page_offset as usize);
-
-        let page = match page_iterator.read_current() {
+        let page = match page_iterator.read_page(page_offset as usize) {
             None => break,
             Some(r) => r,
         };
 
-        for i in 0..(usize::from(page.data_length) / row_size) {
-            let start = i * row_size;
-            let end = start + row_size;
-
-            let mut data = [0x0u8; 516];
-            data.copy_from_slice(&page.data[start..end]);
-            let row = row::Row::from_bytes(&data);
-
+        for row in row::RowReader::new(&page, row_size) {
             if row.age == age_match {
                 count += 1;
             }
         }
     }
 
+    let full_time = now.elapsed().as_millis();
+
     println!("\nBinary Search:");
-    println!("Found {} users with the age of {} in {} ms", count, age_match, now.elapsed().as_millis());
+    println!("Found {} users with the age of {} in {}ms", count, age_match, full_time);
+    println!("The index step took {}ms, the data step took {}ms", index_scan_time, full_time - index_scan_time);
     println!("Went through {} pages", processed_pages.len());
 }
 
@@ -148,23 +136,16 @@ fn full_search(age_match: i32) {
     for page in page_iterator {
         processed_pages.push(page.offset);
 
-        for i in 0..(usize::from(page.data_length) / row_size) {
-            let start = i * row_size;
-            let end = start + row_size;
-
-            let mut data = [0x0u8; 516];
-            data.copy_from_slice(&page.data[start..end]);
-            let row = row::Row::from_bytes(&data);
-
+        for row in row::RowReader::new(&page, row_size) {
             if row.age == age_match {
                 count += 1;
                 pages_with_result.insert(page.offset);
             }
-        }
+        } 
     }
 
     println!("\nFull Search:");
-    println!("Found {} users with the age of {} in {} ms", count, age_match, now.elapsed().as_millis());
+    println!("Found {} users with the age of {} in {}ms", count, age_match, now.elapsed().as_millis());
     println!("Went through {} pages (pages with results {})", processed_pages.len(), pages_with_result.len());
 }
 
@@ -220,8 +201,8 @@ fn create_index() {
 
     let mut mem_index = Vec::<(i32, u64)>::new();
 
-    // TODO: Can be improved by using pages for the index.
-    for page in page_iterator {
+    // TODO: Can be improved by using pages for the index.    
+    for page in page_iterator {        
         for i in 0..(usize::from(page.data_length) / row_size) {
             let start = i * row_size;
             let end = start + row_size;

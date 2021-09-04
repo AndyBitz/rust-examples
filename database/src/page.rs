@@ -11,7 +11,7 @@ pub struct Page {
     /**
      * The user content of this page.
      */
-    pub data: [u8; 0xffff - 0x8 - 0x2]
+    pub data: [u8; 0xffff - (0x8 + 0x2)]
 }
 
 impl Page {
@@ -19,7 +19,7 @@ impl Page {
         Page {
             offset: offset,
             data_length: 0x0,
-            data: [0x0; 0xffff - 0x8 - 0x2]
+            data: [0x0; 0xffff - (0x8 + 0x2)]
         }
     }
 
@@ -80,5 +80,16 @@ impl Page {
         }
 
         return bytes_written;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn it_page_size() {
+        let empty_page = Page::new(0);
+        assert_eq!(empty_page.serialize().len(), 0xffff);
     }
 }

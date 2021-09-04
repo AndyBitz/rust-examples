@@ -1,3 +1,7 @@
+use std::convert::TryInto;
+
+use crate::page;
+
 #[derive(Debug)]
 pub struct Row {
     pub id: [u8; 0xff],
@@ -63,5 +67,39 @@ impl Row {
         }
         
         return output;
+    }
+}
+
+pub struct RowReader<'a> {
+    page: &'a page::Page,
+    row_size: usize,
+    current: usize,
+    last: usize,
+}
+
+impl RowReader<'_> {
+    pub fn new<'a>(page: &'a page::Page, row_size: usize) -> RowReader<'a> {
+        RowReader {
+            page,
+            row_size,
+            current: 0,
+            last: page.data_length as usize / row_size 
+        }
+    }
+}
+
+impl Iterator for RowReader<'_> {
+    type Item = Row;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current > self.last {
+            return None;
+        }
+
+        let start = self.current * self.row_size;
+        let end = start + self.row_size;
+        self.current += 1;
+
+        Some(Row::from_bytes(&self.page.data[start..end].try_into().unwrap()))
     }
 }

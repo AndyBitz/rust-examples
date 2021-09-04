@@ -9,11 +9,12 @@ The database can than scan the entire data through a binary search or a full sea
 ```
 $ cargo run
 Full Search:
-Found 102119 users with the age of 32 in 7292 ms
+Found 102119 users with the age of 32 in 7631ms
 Went through 100000 pages (pages with results 64133)
 
 Binary Search:
-Found 102119 users with the age of 32 in 7058 ms
+Found 102119 users with the age of 32 in 5771ms
+The index step took 113ms, the data step took 5658ms
 Went through 64133 pages
 ```
 
