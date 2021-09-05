@@ -25,6 +25,7 @@ impl PageReader {
 
         // If the difference is small enough, just read everything until
         // as it is more performant than seeking.
+        // TODO: This probably depends on the underlying disk and protocol used. 
         if page_offset > self.offset {
             let pages_to_read = (page_offset - self.offset) - 1;
 
